@@ -21,8 +21,6 @@ statistics.columns = ["max", "min", "avg", "std"]
 with open("cardiotocography3clases_TREE", "rb") as file:
     tree_model = pickle.load(file)
 
-print(tree_model.tree_.feature)
-
 class_name = "clase"
 features = list(after.columns)
 features.remove(class_name)
@@ -31,9 +29,11 @@ y_test = after[class_name]
 x_test = after[features]
 
 
-std_tree_diagnostic = TreeDiagnostics(normalize_method=NormOptions.STD_NORM)
-minmax_tree_diagnostic = TreeDiagnostics(normalize_method=NormOptions.MINMAX_NORM)
+std_tree_diagnostic = TreeDiagnostics(normalize_method=NormOptions.STD_NORM, delete_leaves_nodes=True)
+minmax_tree_diagnostic = TreeDiagnostics(normalize_method=NormOptions.MINMAX_NORM, delete_leaves_nodes=True)
 
 
-matrix = std_tree_diagnostic.diagnose_tree(clf=tree_model, statistics=statistics, data_x=x_test, data_y=y_test)
-print(matrix)
+matrix_std = std_tree_diagnostic.diagnose_tree(clf=tree_model, statistics=statistics, data_x=x_test, data_y=y_test)
+matrix_minmax = minmax_tree_diagnostic.diagnose_tree(clf=tree_model, statistics=statistics, data_x=x_test, data_y=y_test)
+print(matrix_std)
+print(matrix_minmax)

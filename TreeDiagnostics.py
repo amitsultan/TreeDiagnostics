@@ -26,16 +26,19 @@ class TreeDiagnostics:
         The function to invoke normalization.
     """
 
-    def __init__(self, normalize_method: NormOptions) -> None:
+    def __init__(self, normalize_method: NormOptions, delete_leaves_nodes: bool = False) -> None:
         """
         Initialize the TreeDiagnostics object.
         Parameters
         ----------
         normalize_method : NormOptions
             The normalization method to be used.
+        delete_leaves_nodes: Bool
+            Delete leaves columns from the output, otherwise - fill with -inf.
         """
         self.norm_opt = normalize_method
         self.norm_func = invoke_normalization
+        self.delete_leaves = delete_leaves_nodes
 
     def diagnose_tree(self, clf: BaseDecisionTree, statistics: pd.DataFrame, data_x: pd.DataFrame,
                       data_y: pd.Series) -> pd.DataFrame:
@@ -61,7 +64,7 @@ class TreeDiagnostics:
             The dataframe with diagnosis results.
         """
         is_correctly_classified = []
-        masked_output = self.__prepare_output_masked(clf, data_x)
+        masked_output, decision_nodes_indices, leaf_indices = self.__prepare_output_masked(clf, data_x)
         for i in range(len(masked_output)):
             instance = masked_output[i]
             example_x, example_y = data_x.iloc[i].values, data_y.iloc[i]
@@ -73,9 +76,12 @@ class TreeDiagnostics:
                 )
                 masked_output[i][node_id] = 0 if new_clf is None else (new_threshold if verdict else 0)
         results = np.hstack((masked_output, is_correctly_classified))
-        return pd.DataFrame(results)
+        df = pd.DataFrame(results)
+        if self.delete_leaves:
+            df = df.drop(columns=leaf_indices, axis=1)
+        return df
 
-    def __prepare_output_masked(self, clf: BaseDecisionTree, data_x: pd.DataFrame) -> np.ndarray:
+    def __prepare_output_masked(self, clf: BaseDecisionTree, data_x: pd.DataFrame) -> Tuple:
         """
         Prepare masked output for diagnosis. It prepares the layout
         for the output matrix. (Rows - instances, Columns - Tree Nodes).
@@ -96,10 +102,10 @@ class TreeDiagnostics:
             The masked output.
         """
         arr = clf.decision_path(data_x).toarray().astype('float64')
-        decision_nodes_indices = np.where(clf.tree_.feature != -2)
-        leaf_indices = np.where(clf.tree_.feature == -2)
+        decision_nodes_indices = np.where(clf.tree_.feature != -2)[0]
+        leaf_indices = np.where(clf.tree_.feature == -2)[0]
         arr[:, leaf_indices] = -float('inf')
-        return arr
+        return arr, decision_nodes_indices, leaf_indices
 
     def __step(self, clf: BaseDecisionTree, features_statistics: pd.DataFrame, node_id: int, example: np.ndarray,
                true_ground: int) -> Tuple[bool, float, BaseDecisionTree]:
