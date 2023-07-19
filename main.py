@@ -29,6 +29,7 @@ y_test = after[class_name]
 x_test = after[features]
 
 
+non_normalized_tree_diagnostic = TreeDiagnostics(normalize_method=NormOptions.NO_ACTION, delete_leaves_nodes=True)
 std_tree_diagnostic = TreeDiagnostics(normalize_method=NormOptions.STD_NORM, delete_leaves_nodes=True)
 minmax_tree_diagnostic = TreeDiagnostics(normalize_method=NormOptions.MINMAX_NORM, delete_leaves_nodes=True)
 

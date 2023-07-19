@@ -68,13 +68,20 @@ class TreeDiagnostics:
         for i in range(len(masked_output)):
             instance = masked_output[i]
             example_x, example_y = data_x.iloc[i].values, data_y.iloc[i]
-            is_correctly_classified.append(example_y == clf.predict(example_x.reshape(1, -1)))
+            is_correct = example_y == clf.predict(example_x.reshape(1, -1))
+            is_error = [not is_correct[0]]
+            is_correctly_classified.append(is_error)
             visited_nodes = np.where(instance == 1)[0]
             for node_id in visited_nodes:
                 verdict, new_threshold, new_clf = self.__step(
                     clf=clf, features_statistics=statistics, node_id=node_id, example=example_x, true_ground=example_y
                 )
-                masked_output[i][node_id] = 0 if new_clf is None else (new_threshold if verdict else 0)
+                # if corr -> corr 0 miss -> miss = 0
+                if (is_correct and verdict) or (not is_correct and not verdict):
+                    masked_output[i][node_id] = 0
+                # if miss -> correct = thresh corr -> miss thresh
+                elif (is_correct and not verdict) or (not is_correct and verdict):
+                    masked_output[i][node_id] = new_threshold
         results = np.hstack((masked_output, is_correctly_classified))
         df = pd.DataFrame(results)
         if self.delete_leaves:
@@ -135,7 +142,7 @@ class TreeDiagnostics:
         statistics = features_statistics.iloc[feature]
         threshold = tree.threshold[node_id]
         new_threshold = example[feature] - np.finfo(float).eps if example[feature] <= threshold else example[feature] + np.finfo(float).eps
-        diff = self.norm_func(tree.threshold[node_id] - new_threshold, statistics, self.norm_opt)
+        diff = self.norm_func(np.abs(tree.threshold[node_id] - new_threshold), statistics, self.norm_opt)
         tree.threshold[node_id] = new_threshold
         verdict = clf.predict(example.reshape(1, -1)) == true_ground
         return verdict, diff, clf
