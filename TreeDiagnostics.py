@@ -73,14 +73,14 @@ class TreeDiagnostics:
             is_correctly_classified.append(is_error)
             visited_nodes = np.where(instance == 1)[0]
             for node_id in visited_nodes:
-                verdict, new_threshold, new_clf = self.__step(
+                is_correct_new, new_threshold, new_clf = self.__step(
                     clf=clf, features_statistics=statistics, node_id=node_id, example=example_x, true_ground=example_y
                 )
                 # if corr -> corr 0 miss -> miss = 0
-                if (is_correct and verdict) or (not is_correct and not verdict):
+                if (is_correct and is_correct_new) or (not is_correct and not is_correct_new):
                     masked_output[i][node_id] = 0
                 # if miss -> correct = thresh corr -> miss thresh
-                elif (is_correct and not verdict) or (not is_correct and verdict):
+                elif (is_correct and not is_correct_new) or (not is_correct and is_correct_new):
                     masked_output[i][node_id] = new_threshold
         results = np.hstack((masked_output, is_correctly_classified))
         df = pd.DataFrame(results)
